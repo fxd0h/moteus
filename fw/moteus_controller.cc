@@ -290,8 +290,14 @@ class MoteusController::Impl : public multiplex::MicroServer::Server {
                 MOTEUS_MSENSE : MOTEUS_MSENSE_5_AND_LATER;
 
             options.debug_dac = MOTEUS_DEBUG_DAC;
+
+#ifndef ENABLE_STEP_DIR_IF
             options.debug_out = MOTEUS_DEBUG1;
             options.debug_out2 = MOTEUS_DEBUG2;
+#else
+            options.step_in = MOTEUS_STEP_IN;
+            options.dir_in = MOTEUS_DIR_IN;
+#endif
             options.debug_uart_out = MOTEUS_UART_TX;
 
             return options;

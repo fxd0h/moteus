@@ -54,9 +54,13 @@ class BldcServo {
     PinName msense = NC;  // Must be sampled from ADC5/4
 
     PinName debug_dac = NC;
+#ifndef ENABLE_STEP_DIR_IF
     PinName debug_out = NC;
     PinName debug_out2 = NC;
-
+#else
+    PinName step_in = NC;
+    PinName dir_in = NC;
+#endif
     // If set, a constant telemetry stream will be emitted at the
     // control rate.
     PinName debug_uart_out = NC;
@@ -233,6 +237,18 @@ class BldcServo {
     };
     EncoderFilter encoder_filter;
 
+    struct ExtStepDirIf {
+      bool enabled = false;
+      float multiplier = 1.0f;
+      template <typename Archive>
+      void Serialize(Archive* a) {
+        a->Visit(MJ_NVP(enabled));
+        a->Visit(MJ_NVP(multiplier));
+      }
+    };
+    
+    ExtStepDirIf step_dir_interface;
+      
     Config() {
       pid_dq.kp = 0.005f;
       pid_dq.ki = 30.0f;
@@ -278,6 +294,7 @@ class BldcServo {
       a->Visit(MJ_NVP(rezero_from_abs));
       a->Visit(MJ_NVP(emit_debug));
       a->Visit(MJ_NVP(encoder_filter));
+      a->Visit(MJ_NVP(step_dir_interface));
     }
   };
 
@@ -411,6 +428,8 @@ class BldcServo {
 
     // This is measured in the same units as unwrapped_position_raw.
     std::optional<int64_t> control_position;
+    int64_t step_dir_indexer_raw;
+    std::optional<float> step_dir_indexer;
     float position_to_set = 0.0;
     float timeout_s = 0.0;
     bool rezeroed = false;
@@ -502,6 +521,8 @@ class BldcServo {
       a->Visit(MJ_NVP(pid_position));
 
       a->Visit(MJ_NVP(control_position));
+      a->Visit(MJ_NVP(step_dir_indexer_raw));
+      a->Visit(MJ_NVP(step_dir_indexer));
       a->Visit(MJ_NVP(position_to_set));
       a->Visit(MJ_NVP(timeout_s));
       a->Visit(MJ_NVP(rezeroed));

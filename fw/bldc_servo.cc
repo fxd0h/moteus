@@ -277,8 +277,13 @@ class BldcServo::Impl {
         msense_(options.msense),
         msense_sqr_(FindSqr(options.msense)),
         debug_dac_(options.debug_dac),
+#ifndef ENABLE_STEP_DIR_IF      
         debug_out_(options.debug_out),
         debug_out2_(options.debug_out2),
+#else
+        step_in_(options.step_in),
+        dir_in_(options.dir_in),
+#endif
         debug_serial_([&]() {
             Stm32Serial::Options d_options;
             d_options.tx = options.debug_uart_out;
@@ -308,7 +313,11 @@ class BldcServo::Impl {
   void Start() {
     ConfigureADC();
     ConfigurePwmTimer();
-
+#ifdef ENABLE_STEP_DIR_IF
+    dir_in_.mode(PullUp);
+    step_in_.mode(PullUp);
+    step_in_.rise(callback(this,&Impl::extIntStep));
+#endif    
     if (options_.debug_uart_out != NC) {
       const auto uart = pinmap_peripheral(
           options_.debug_uart_out, PinMap_UART_TX);
@@ -732,18 +741,22 @@ class BldcServo::Impl {
         (pwm_counts_ - cnt) :
         (pwm_counts_ + cnt);
     status_.total_timer = 2 * pwm_counts_;
+#ifndef ENABLE_STEP_DIR_IF      
     debug_out_ = 0;
+#endif
   }
 
   void ISR_DoSense() __attribute__((always_inline)) MOTEUS_CCM_ATTRIBUTE {
     // Wait for sampling to complete.
     while ((ADC3->ISR & ADC_ISR_EOS) == 0);
 
+#ifndef ENABLE_STEP_DIR_IF      
     // We would like to set this debug pin as soon as possible.
     // However, if we flip it while the current ADCs are sampling,
     // they can get a lot more noise in some situations.  Thus just
     // wait until now.
     debug_out_ = 1;
+#endif
 
     // We are now out of the most time critical portion of the ISR,
     // although it is still all pretty time critical since it runs
@@ -900,6 +913,15 @@ class BldcServo::Impl {
       if (need_rezero_because_init) {
         status_.rezeroed = true;
       }
+
+      if (config_.step_dir_interface.enabled){
+        status_.step_dir_indexer = 0.0f;
+        status_.step_dir_indexer_raw = 0;
+      }else{
+     //   status_.step_dir_indexer = {};
+     //   status_.step_dir_indexer_raw = {};
+      }
+      
     } else {
       status_.unwrapped_position_raw +=
           static_cast<int64_t>(65536ll * 65536ll) * delta_position;
@@ -2035,9 +2057,14 @@ class BldcServo::Impl {
 
   AnalogOut debug_dac_;
 
+#ifndef ENABLE_STEP_DIR_IF
   // This is just for debugging.
   DigitalOut debug_out_;
   DigitalOut debug_out2_;
+#else
+  InterruptIn step_in_;
+  DigitalIn dir_in_;
+#endif
 
   int32_t phase_ = 0;
 
@@ -2091,6 +2118,20 @@ class BldcServo::Impl {
   const uint8_t hw_rev_ = g_measured_hw_rev;
 
   static Impl* g_impl_;
+
+  void extIntStep() MOTEUS_CCM_ATTRIBUTE{
+    volatile int8_t dir_value =0;
+    
+    if (dir_in_.read()){
+      dir_value = 1;
+    }else{
+      dir_value = -1;
+    }
+    if (config_.step_dir_interface.enabled){
+   
+      status_.step_dir_indexer_raw = status_.step_dir_indexer_raw + dir_value;
+    }
+  }
 };
 
 BldcServo::Impl* BldcServo::Impl::g_impl_ = nullptr;
