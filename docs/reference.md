@@ -294,6 +294,8 @@ to write.
 - 11 => timeout
 - 12 => zero velocity
 - 13 => stay within
+- 14 => measure inductance
+- 15 => brake
 
 #### 0x001 - Position ####
 
@@ -492,6 +494,11 @@ torque.
 When in Position mode, and a non-zero velocity is commanded, stop
 motion when reaching the given position.  NaN / maximally negative
 means no limit is applied.  If unspecified, NaN is used.
+
+Note, if the controller is ever commanded to move *away* from the stop
+position, say with a velocity command that is inconsistent with the
+start and stop position, then it will act as if a 0 velocity has been
+commanded and the current command position equals the stop position.
 
 #### 0x027 - Watchdog timeout ####
 
@@ -788,6 +795,11 @@ The fields have the same semantics as for the register protocol
 documented above.  The options are the same as for `d pos`, with the
 exception of stop position which is not supported.
 
+### `d brake` ###
+
+Enter the "brake" state.  In this mode, all motor phases are shorted
+to ground, resulting in a passive "braking" action.
+
 ### `d index` ###
 
 Force the current recorded position to match exactly the given value.
@@ -1067,7 +1079,15 @@ torque is stopped.
 
 ## `servo.max_power_W` ##
 
-The controller will limit the output power to this value.
+The controller will limit the output power to this value.  The value
+is defined relative to a PWM rate of 40kHz and is scaled linearly with
+respect to the PWM rate.
+
+## `servo.pwm_rate_hz` ##
+
+The PWM rate to use, defaulting to 40000.  Allowable values are
+between 15000 and 60000.  Lower values increase efficiency, but limit
+peak power and reduce the maximum speed and control bandwidth.
 
 ## `servo.derate_temperature` ##
 
@@ -1141,6 +1161,15 @@ interface.
 When in the "position timeout" mode the controller acts to damp the
 output.  This parameter controls the maximum torque available for such
 damping.
+
+## `servo.timeout_mode` ##
+
+Selects what behavior will take place in the position timeout mode.
+The allowable values are a subset of the top level modes.
+
+* 0 - "stopped" - the driver is disengaged
+* 12 - "zero velocity"
+* 15 - "brake"
 
 ## `servo.rezero_from_abs` ##
 
@@ -1374,6 +1403,21 @@ Pin 1 is closest to the ABS label.  They are assigned as follows:
 Looking at the pins of the power connector with the top of the board
 up, the ground pin is to the left with the chamfered corner and the
 positive supply is to the right with the square corner.
+
+### Pico-SPOX 6 ENC ###
+
+Looking at the back of the board with the ENC connector at the top,
+pins are numbered 1 as the rightmost, and 6 as the leftmost.
+
+ - 1 - 3.3V
+ - 2 - CS
+ - 3 - GND
+ - 4 - SCLK
+ - 5 - MISO
+ - 6 - MOSI
+
+These pads can be populated with a Molex Pico-SPOX 6 connector PN
+0874380643, or as an alternate, TE 5-1775444-6.
 
 # F. CAN-FD communication #
 

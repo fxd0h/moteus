@@ -1,4 +1,4 @@
-// Copyright 2018-2021 Josh Pieper, jjp@pobox.com.
+// Copyright 2018-2022 Josh Pieper, jjp@pobox.com.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -144,13 +144,17 @@ class BldcServo {
   };
 
   struct Config {
+    uint16_t pwm_rate_hz =
+        (g_measured_hw_rev <= 2) ? 60000 :
+        40000;
+
     float i_gain = 20.0f;  // should match csa_gain from drv8323
     float current_sense_ohm = 0.0005;
 
     // PWM rise time compensation
-    float pwm_comp_off = (g_measured_hw_rev <= 6) ? 0.015 : 0.048;
-    float pwm_comp_mag = (g_measured_hw_rev <= 6) ? 0.005 : 0.011;
-    float pwm_scale = (g_measured_hw_rev <= 6 ) ? 1.0f : 1.15f;
+    float pwm_comp_off = (g_measured_hw_rev <= 6) ? 0.015 : 0.055;
+    float pwm_comp_mag = (g_measured_hw_rev <= 6) ? 0.005 : 0.005;
+    float pwm_scale = (g_measured_hw_rev <= 6 ) ? 1.0f : 1.0f;
 
     // We pick a default maximum voltage based on the board revision.
     float max_voltage = (g_measured_hw_rev <= 5) ? 37.0f : 46.0f;
@@ -195,6 +199,14 @@ class BldcServo {
 
     float default_timeout_s = 0.1f;
     float timeout_max_torque_Nm = 5.0f;
+
+    // Selects the behavior when in the timeout mode.  The available
+    // options map to top level modes, although only the following are
+    // valid:
+    //  0 - "stopped" - motor driver disengaged
+    //  12 - "zero velocity" - derivative only position control
+    //  15 - "brake" - all motor phases shorted to ground
+    uint8_t timeout_mode = 12;
 
     // Similar to 'max_voltage', the flux braking default voltage is
     // board rev dependent.
@@ -262,6 +274,7 @@ class BldcServo {
 
     template <typename Archive>
     void Serialize(Archive* a) {
+      a->Visit(MJ_NVP(pwm_rate_hz));
       a->Visit(MJ_NVP(i_gain));
       a->Visit(MJ_NVP(current_sense_ohm));
       a->Visit(MJ_NVP(pwm_comp_off));
@@ -283,6 +296,7 @@ class BldcServo {
       a->Visit(MJ_NVP(max_position_slip));
       a->Visit(MJ_NVP(default_timeout_s));
       a->Visit(MJ_NVP(timeout_max_torque_Nm));
+      a->Visit(MJ_NVP(timeout_mode));
       a->Visit(MJ_NVP(flux_brake_min_voltage));
       a->Visit(MJ_NVP(flux_brake_resistance_ohm));
       a->Visit(MJ_NVP(max_current_A));
@@ -357,14 +371,14 @@ class BldcServo {
 
     // This state can be commanded directly, and will also be entered
     // automatically upon a watchdog timeout from kPosition.  When in
-    // this state, the controller will apply a derivative only
-    // position control to slowly bring the servos to a resting
-    // position.
+    // this state, the controller will apply the selected fallback
+    // control mode.
     //
     // The only way to exit this state is through a stop command.
     kPositionTimeout = 11,
 
-    // This is just like kPositionTimeout, but is not latching.
+    // Control to zero velocity through a derivative only version of
+    // the position mode.
     kZeroVelocity = 12,
 
     // This applies the PID controller only to stay within a
@@ -376,6 +390,9 @@ class BldcServo {
     // in order to measure inductance assuming a motor with
     // approximately equal D/Q axis inductances.
     kMeasureInductance = 14,
+
+    // All phases are pulled to ground.
+    kBrake = 15,
 
     kNumModes,
   };
@@ -709,6 +726,7 @@ struct IsEnum<moteus::BldcServo::Mode> {
         { M::kZeroVelocity, "zero_vel" },
         { M::kStayWithinBounds, "within" },
         { M::kMeasureInductance, "meas_ind" },
+        { M::kBrake, "brake" },
       }};
   }
 };
