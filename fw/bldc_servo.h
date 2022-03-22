@@ -149,7 +149,7 @@ class BldcServo {
         40000;
 
     float i_gain = 20.0f;  // should match csa_gain from drv8323
-    float current_sense_ohm = 0.0005;
+    float current_sense_ohm = 0.005;// 0.0005 
 
     // PWM rise time compensation
     float pwm_comp_off = (g_measured_hw_rev <= 6) ? 0.015 : 0.055;
@@ -252,10 +252,19 @@ class BldcServo {
     struct ExtStepDirIf {
       bool enabled = false;
       float multiplier = 1.0f;
+      
+      bool startEnabled = false;
+      float max_t = 4;
+      float velocity = 4;
+     
       template <typename Archive>
       void Serialize(Archive* a) {
         a->Visit(MJ_NVP(enabled));
         a->Visit(MJ_NVP(multiplier));
+        a->Visit(MJ_NVP(startEnabled));
+        a->Visit(MJ_NVP(max_t));
+        a->Visit(MJ_NVP(velocity));
+
       }
     };
     

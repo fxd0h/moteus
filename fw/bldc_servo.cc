@@ -951,10 +951,25 @@ class BldcServo::Impl {
       if (need_rezero_because_init) {
         status_.rezeroed = true;
       }
-
+      //TODO Check for a better place to put STEP/DIR Interface initialization
+      if (config_.step_dir_interface.startEnabled){
+        config_.step_dir_interface.enabled = true;
+      }
       if (config_.step_dir_interface.enabled){
+        
         status_.step_dir_indexer = 0.0f;
         status_.step_dir_indexer_raw = 0;
+        
+        CommandData command;
+        command.mode = BldcServo::kPosition;
+
+        command.position = std::numeric_limits<double>::quiet_NaN();
+        command.timeout_s = std::numeric_limits<double>::quiet_NaN();
+        command.set_position = 0;  // reset position indexer
+        command.velocity = config_.step_dir_interface.velocity;
+        command.max_torque_Nm = config_.step_dir_interface.max_t;
+
+        Command(command);
       }else{
      //   status_.step_dir_indexer = {};
      //   status_.step_dir_indexer_raw = {};
@@ -1804,7 +1819,12 @@ class BldcServo::Impl {
     // control_position so as to avoid converting a float directly to
     // an int64, which calls out to a system library that is pretty
     // slow.
-
+    if (config_.step_dir_interface.enabled){
+      status_.control_position =
+          static_cast<int64_t>(65536ll * 65536ll) *
+          static_cast<int64_t>(
+              ( status_.step_dir_indexer_raw * config_.step_dir_interface.multiplier ));
+    }else
     if (!std::isnan(data->position)) {
       status_.control_position =
           static_cast<int64_t>(65536ll * 65536ll) *
