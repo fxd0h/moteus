@@ -237,6 +237,16 @@ enum class Register {
   kSerialNumber3 = 0x122,
 
   kRezero = 0x130,
+  
+  kExternalPositionSensor1 = 0x200,
+  kExternalPositionSensor2 = 0x201,
+  kExternalPositionSensor3 = 0x202,
+  
+  kExternalPositionAuxiliar1 = 0x210,
+  kExternalPositionAuxiliar2 = 0x211,
+  kExternalPositionAuxiliar3 = 0x212,
+
+
 };
 }
 
@@ -439,6 +449,32 @@ class MoteusController::Impl : public multiplex::MicroServer::Server {
         return 0;
       }
 
+      case Register::kExternalPositionSensor1{
+        bldc_.status().extPos.sensor1 = ReadPosition(value);
+        return 0;
+      }
+      case Register::kExternalPositionSensor2{
+        bldc_.status().extPos.sensor2 = ReadPosition(value);
+        return 0;
+      }
+      case Register::kExternalPositionSensor3{
+        bldc_.status().extPos.sensor3 = ReadPosition(value);
+        return 0;
+      }
+      case Register::kExternalPositionAuxiliar1{
+        bldc_.status().extPos.aux1 = ReadPosition(value);
+        return 0;
+      }
+      case Register::kExternalPositionAuxiliar2{
+        bldc_.status().extPos.aux2 = ReadPosition(value);
+        return 0;      
+      }
+      case Register::kExternalPositionAuxiliar3{
+        bldc_.status().extPos.aux3 = ReadPosition(value);
+        return 0;
+      }
+
+
       case Register::kPosition:
       case Register::kVelocity:
       case Register::kTemperature:
@@ -632,6 +668,26 @@ class MoteusController::Impl : public multiplex::MicroServer::Server {
       case Register::kRezero: {
         break;
       }
+      case Register::kExternalPositionSensor1{
+        return ScalePosition(bldc_.status().extPos.sensor1, type);
+      }
+      case Register::kExternalPositionSensor2{
+        return ScalePosition(bldc_.status().extPos.sensor2, type);
+      }
+      case Register::kExternalPositionSensor3{
+        return ScalePosition(bldc_.status().extPos.sensor3, type);
+      }
+      case Register::kExternalPositionAuxiliar1{
+        return ScalePosition(bldc_.status().extPos.aux1, type);
+      }
+      case Register::kExternalPositionAuxiliar2{
+        return ScalePosition(bldc_.status().extPos.aux2, type);
+      }
+      case Register::kExternalPositionAuxiliar3{
+        return ScalePosition(bldc_.status().extPos.aux3, type);
+      }
+
+
     }
 
     // If we made it here, then we had an unknown register.

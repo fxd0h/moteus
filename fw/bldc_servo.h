@@ -270,6 +270,7 @@ class BldcServo {
     
     ExtStepDirIf step_dir_interface;
       
+  
     Config() {
       pid_dq.kp = 0.005f;
       pid_dq.ki = 30.0f;
@@ -502,6 +503,15 @@ class BldcServo {
 
     Dwt dwt;
 #endif
+    struct ExternalPosition{
+      float sensor1;
+      float sensor2;
+      float sensor3;
+      float aux1;
+      float aux2;
+      float aux3;
+    };
+    ExternalPosition extPos;
 
     template <typename Archive>
     void Serialize(Archive* a) {
@@ -566,6 +576,7 @@ class BldcServo {
 #ifdef MOTEUS_PERFORMANCE_MEASURE
       a->Visit(MJ_NVP(dwt));
 #endif
+      a->Visit(MJ_NVP(extPos)); //ToDo: add conditional compiling flags and documentation
     }
   };
 
