@@ -26,6 +26,7 @@
 #include "mjlib/base/assert.h"
 #include "mjlib/base/windowed_average.h"
 
+#include "fw/bldc_servo_position.h"
 #include "fw/foc.h"
 #include "fw/math.h"
 #include "fw/moteus_hw.h"
@@ -384,6 +385,23 @@ class BldcServo::Impl {
 
     if (next->timeout_s == 0.0f) {
       next->timeout_s = config_.default_timeout_s;
+    }
+    if (std::isnan(next->velocity_limit)) {
+      next->velocity_limit = config_.default_velocity_limit;
+    }
+    if (std::isnan(next->accel_limit)) {
+      next->accel_limit = config_.default_accel_limit;
+    }
+    // If we are going to limit at all, ensure that we have a velocity
+    // limit, and that is is no more than the configured maximum
+    // velocity.
+    if (!std::isnan(next->velocity_limit) || !std::isnan(next->accel_limit)) {
+      if (std::isnan(next->velocity_limit)) {
+        next->velocity_limit = config_.max_velocity;
+      } else {
+        next->velocity_limit =
+            std::min(next->velocity_limit, config_.max_velocity);
+      }
     }
 
     telemetry_data_ = *next;
@@ -992,6 +1010,8 @@ class BldcServo::Impl {
           static_cast<float>(velocity_filter_.size());
     }
 
+    ISR_UpdateFilteredValue(status_.velocity, &status_.velocity_filt, 0.01f);
+
     status_.unwrapped_position =
         (status_.unwrapped_position_raw >> 32) / motor_scale16_;
 
@@ -1302,6 +1322,7 @@ class BldcServo::Impl {
     if (!position_pid_active || force_clear == kAlwaysClear) {
       status_.pid_position.Clear();
       status_.control_position = {};
+      status_.control_velocity = {};
     }
   }
 
@@ -1815,16 +1836,19 @@ class BldcServo::Impl {
       float max_torque_Nm,
       float feedforward_Nm,
       float velocity) MOTEUS_CCM_ATTRIBUTE {
-    // We go to some lengths in our conversions to and from
-    // control_position so as to avoid converting a float directly to
-    // an int64, which calls out to a system library that is pretty
-    // slow.
+    const float velocity_command =
+        BldcServoPosition::UpdateCommand(
+            &status_,
+            &config_,
+            &position_config_,
+            motor_scale16_,
+            rate_config_.rate_hz,
+            data,
+            velocity);
 
     if (!std::isnan(data->ExtPosSensor1)) {
       status_.ext_pos_sensor_1 = data->ExtPosSensor1;
     }
-    // ToDo add more extpos data
-    
     if (config_.step_dir_interface.enabled){
       status_.control_position =
           static_cast<int64_t>(65536ll * 65536ll) *
@@ -1840,76 +1864,6 @@ class BldcServo::Impl {
     } else if (!status_.control_position) {
       status_.control_position = status_.unwrapped_position_raw;
     }
-
-    auto velocity_command = velocity;
-
-    // This limits our usable velocity to 20kHz modulo the position
-    // scale at a 40kHz switching frequency.  1.2 million RPM should
-    // be enough for anybody?
-    status_.control_position =
-        (*status_.control_position +
-         65536ll * static_cast<int32_t>(
-             (65536.0f * motor_scale16_ * velocity_command) /
-             rate_config_.rate_hz));
-
-    if (std::isfinite(config_.max_position_slip)) {
-      const int64_t current_position = status_.unwrapped_position_raw;
-      const int64_t slip =
-          static_cast<int64_t>(65536ll * 65536ll) *
-          static_cast<int32_t>(motor_scale16_ * config_.max_position_slip);
-
-      const int64_t error =
-          current_position - *status_.control_position;
-      if (error < -slip) {
-        *status_.control_position = current_position + slip;
-      }
-      if (error > slip) {
-        *status_.control_position = current_position - slip;
-      }
-    }
-
-    bool hit_limit = false;
-
-    const auto saturate = [&](auto value, auto compare) MOTEUS_CCM_ATTRIBUTE {
-      if (std::isnan(value)) { return; }
-      const auto limit_value = (
-          static_cast<int64_t>(65536ll * 65536ll) *
-          static_cast<int64_t>(
-              static_cast<int32_t>(motor_scale16_ * value)));
-      if (compare(*status_.control_position, limit_value)) {
-        status_.control_position = limit_value;
-        hit_limit = true;
-      }
-    };
-    saturate(position_config_.position_min, [](auto l, auto r) { return l < r; });
-    saturate(position_config_.position_max, [](auto l, auto r) { return l > r; });
-
-    if (!std::isnan(data->stop_position)) {
-      const int64_t stop_position_raw =
-          static_cast<int64_t>(65536ll * 65536ll) *
-          static_cast<int64_t>(
-              static_cast<int32_t>(motor_scale16_ * data->stop_position));
-
-      auto sign = [](auto value) MOTEUS_CCM_ATTRIBUTE -> float {
-        if (value < 0) { return -1.0f; }
-        if (value > 0) { return 1.0f; }
-        return 0.0f;
-      };
-      if (sign(*status_.control_position -
-               stop_position_raw) * velocity_command > 0.0f) {
-        // We are moving away from the stop position.  Force it to be
-        // there and zero out our velocity command.
-        status_.control_position = stop_position_raw;
-        data->velocity = 0.0f;
-        hit_limit = true;
-      }
-    }
-
-    if (hit_limit) {
-      // We have hit a limit.  Assume a velocity of 0.
-      velocity_command = 0.0f;
-    }
-
     // At this point, our control position and velocity are known.
 
     if (config_.fixed_voltage_mode) {
@@ -2006,6 +1960,7 @@ class BldcServo::Impl {
     if (!target_position) {
       status_.pid_position.Clear();
       status_.control_position = {};
+      status_.control_velocity = {};
 
       // In this region, we still apply feedforward torques if they
       // are present.
@@ -2137,6 +2092,7 @@ class BldcServo::Impl {
   Motor motor_;
   Config config_;
   PositionConfig position_config_;
+
   TIM_TypeDef* timer_ = nullptr;
   volatile uint32_t* timer_sr_ = nullptr;
   volatile uint32_t* timer_cr1_ = nullptr;
@@ -2228,8 +2184,10 @@ class BldcServo::Impl {
 
   float torque_constant_ = 0.01f;
   int32_t position_constant_ = 0;
+
   // 65536.0f / unwrapped_position_scale_
   float motor_scale16_ = 0;
+
   float adc_scale_ = 0.0f;
   float adjusted_pwm_comp_off_ = 0.0f;
   float adjusted_max_power_W_ = 0.0f;
