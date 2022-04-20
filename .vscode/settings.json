@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "limits": "cpp",
+        "*.tpp": "cpp",
+        "regex": "cpp"
     }
 }

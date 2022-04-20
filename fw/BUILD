@@ -105,6 +105,8 @@ MOTEUS_SOURCES = [
     "system_info.cc",
     "uuid.h",
     "moteus.cc",
+    "external_sensors.cc",
+    "external_sensors.h",
 ]
 
 MOTEUS_DEPS = [

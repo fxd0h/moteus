@@ -1819,6 +1819,12 @@ class BldcServo::Impl {
     // control_position so as to avoid converting a float directly to
     // an int64, which calls out to a system library that is pretty
     // slow.
+
+    if (!std::isnan(data->ExtPosSensor1)) {
+      status_.ext_pos_sensor_1 = data->ExtPosSensor1;
+    }
+    // ToDo add more extpos data
+    
     if (config_.step_dir_interface.enabled){
       status_.control_position =
           static_cast<int64_t>(65536ll * 65536ll) *

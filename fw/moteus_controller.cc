@@ -232,19 +232,19 @@ enum class Register {
   kRegisterMapVersion = 0x102,
   kMultiplexId = 0x110,
 
-  kSerialNumber1 = 0x120,
+  kSerialNumber1 = 0x120, //a002
   kSerialNumber2 = 0x121,
   kSerialNumber3 = 0x122,
 
   kRezero = 0x130,
   
-  kExternalPositionSensor1 = 0x200,
-  kExternalPositionSensor2 = 0x201,
-  kExternalPositionSensor3 = 0x202,
+  kExternalPositionSensor1 = 0x200,   // varint 0x8004
+  kExternalPositionSensor2 = 0x201,   // 0x8104
+  kExternalPositionSensor3 = 0x202,   // 0x8204
   
-  kExternalPositionAuxiliar1 = 0x210,
-  kExternalPositionAuxiliar2 = 0x211,
-  kExternalPositionAuxiliar3 = 0x212,
+  kExternalPositionAuxiliar1 = 0x210,  // 0x9004
+  kExternalPositionAuxiliar2 = 0x211,  // 0x9104
+  kExternalPositionAuxiliar3 = 0x212,  // 0x9204
 
 
 };
@@ -449,28 +449,42 @@ class MoteusController::Impl : public multiplex::MicroServer::Server {
         return 0;
       }
 
-      case Register::kExternalPositionSensor1{
-        bldc_.status().extPos.sensor1 = ReadPosition(value);
+      case Register::kExternalPositionSensor1:{
+        command_.ExtPosSensor1 = ReadPosition(value);
+        command_.mode = BldcServo::kPosition;
+
+        command_.position = std::numeric_limits<double>::quiet_NaN();
+        command_.timeout_s = std::numeric_limits<double>::quiet_NaN();
+        //command_.set_position = 0;  // reset position indexer
+        command_.velocity = bldc_.config().step_dir_interface.velocity;
+        command_.max_torque_Nm = bldc_.config().step_dir_interface.max_t;
+        command_valid_ = true;
         return 0;
       }
-      case Register::kExternalPositionSensor2{
-        bldc_.status().extPos.sensor2 = ReadPosition(value);
+      
+      case Register::kExternalPositionSensor2:{
+        command_.ExtPosSensor2 = ReadPosition(value);
+        //command_valid_ = true;
         return 0;
       }
-      case Register::kExternalPositionSensor3{
-        bldc_.status().extPos.sensor3 = ReadPosition(value);
+      case Register::kExternalPositionSensor3:{
+        command_.ExtPosSensor3 = ReadPosition(value);
+        //command_valid_ = true;        
         return 0;
       }
-      case Register::kExternalPositionAuxiliar1{
-        bldc_.status().extPos.aux1 = ReadPosition(value);
+      case Register::kExternalPositionAuxiliar1:{
+        command_.ExtPosAux1 = ReadPosition(value);
+        //command_valid_ = true;        
         return 0;
       }
-      case Register::kExternalPositionAuxiliar2{
-        bldc_.status().extPos.aux2 = ReadPosition(value);
+      case Register::kExternalPositionAuxiliar2:{
+        command_.ExtPosAux2 = ReadPosition(value);
+        //command_valid_ = true;        
         return 0;      
       }
-      case Register::kExternalPositionAuxiliar3{
-        bldc_.status().extPos.aux3 = ReadPosition(value);
+      case Register::kExternalPositionAuxiliar3:{
+        command_.ExtPosAux3 = ReadPosition(value);
+        //command_valid_ = true;        
         return 0;
       }
 
@@ -668,23 +682,23 @@ class MoteusController::Impl : public multiplex::MicroServer::Server {
       case Register::kRezero: {
         break;
       }
-      case Register::kExternalPositionSensor1{
-        return ScalePosition(bldc_.status().extPos.sensor1, type);
+      case Register::kExternalPositionSensor1:{
+        return ScalePosition(bldc_.status().ext_pos_sensor_1, type);
       }
-      case Register::kExternalPositionSensor2{
-        return ScalePosition(bldc_.status().extPos.sensor2, type);
+      case Register::kExternalPositionSensor2:{
+        return ScalePosition(bldc_.status().ext_pos_sensor_2, type);
       }
-      case Register::kExternalPositionSensor3{
-        return ScalePosition(bldc_.status().extPos.sensor3, type);
+      case Register::kExternalPositionSensor3:{
+        return ScalePosition(bldc_.status().ext_pos_sensor_3, type);
       }
-      case Register::kExternalPositionAuxiliar1{
-        return ScalePosition(bldc_.status().extPos.aux1, type);
+      case Register::kExternalPositionAuxiliar1:{
+        return ScalePosition(bldc_.status().ext_pos_aux_1, type);
       }
-      case Register::kExternalPositionAuxiliar2{
-        return ScalePosition(bldc_.status().extPos.aux2, type);
+      case Register::kExternalPositionAuxiliar2:{
+        return ScalePosition(bldc_.status().ext_pos_aux_2, type);
       }
-      case Register::kExternalPositionAuxiliar3{
-        return ScalePosition(bldc_.status().extPos.aux3, type);
+      case Register::kExternalPositionAuxiliar3:{
+        return ScalePosition(bldc_.status().ext_pos_aux_3, type);
       }
 
 

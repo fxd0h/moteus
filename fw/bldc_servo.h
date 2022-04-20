@@ -503,15 +503,15 @@ class BldcServo {
 
     Dwt dwt;
 #endif
-    struct ExternalPosition{
-      float sensor1;
-      float sensor2;
-      float sensor3;
-      float aux1;
-      float aux2;
-      float aux3;
-    };
-    ExternalPosition extPos;
+    
+    float ext_pos_sensor_1;
+    float ext_pos_sensor_2;
+    float ext_pos_sensor_3;
+
+    float ext_pos_aux_1;
+    float ext_pos_aux_2;
+    float ext_pos_aux_3;
+
 
     template <typename Archive>
     void Serialize(Archive* a) {
@@ -576,7 +576,16 @@ class BldcServo {
 #ifdef MOTEUS_PERFORMANCE_MEASURE
       a->Visit(MJ_NVP(dwt));
 #endif
-      a->Visit(MJ_NVP(extPos)); //ToDo: add conditional compiling flags and documentation
+     // a->Visit(MJ_NVP(extPos)); //ToDo: add conditional compiling flags and documentation
+      a->Visit(MJ_NVP(ext_pos_sensor_1));
+      a->Visit(MJ_NVP(ext_pos_sensor_2));
+      a->Visit(MJ_NVP(ext_pos_sensor_3));
+
+      a->Visit(MJ_NVP(ext_pos_aux_1));
+      a->Visit(MJ_NVP(ext_pos_aux_2));
+      a->Visit(MJ_NVP(ext_pos_aux_3));
+
+
     }
   };
 
@@ -672,6 +681,13 @@ class BldcServo {
     // position closest to the given value.
     std::optional<float> rezero_position;
 
+    float ExtPosSensor1;
+    float ExtPosSensor2;
+    float ExtPosSensor3;
+    float ExtPosAux1;
+    float ExtPosAux2;
+    float ExtPosAux3;
+    
     template <typename Archive>
     void Serialize(Archive* a) {
       a->Visit(MJ_NVP(mode));
@@ -703,6 +719,15 @@ class BldcServo {
 
       a->Visit(MJ_NVP(set_position));
       a->Visit(MJ_NVP(rezero_position));
+
+      a->Visit(MJ_NVP(ExtPosSensor1));
+      a->Visit(MJ_NVP(ExtPosSensor2));
+      a->Visit(MJ_NVP(ExtPosSensor3));
+
+      a->Visit(MJ_NVP(ExtPosAux1));
+      a->Visit(MJ_NVP(ExtPosAux2));
+      a->Visit(MJ_NVP(ExtPosAux3));
+
     }
   };
 
