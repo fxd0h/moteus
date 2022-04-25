@@ -470,7 +470,7 @@ class MoteusController::Impl : public multiplex::MicroServer::Server {
 
       case Register::kExternalPositionSensor1:{
         command_.ExtPosSensor1 = ReadPosition(value);
-        command_.mode = BldcServo::kPosition;
+        command_.mode = BldcServo::Mode::kPosition;
 
         command_.position = std::numeric_limits<double>::quiet_NaN();
         command_.timeout_s = std::numeric_limits<double>::quiet_NaN();

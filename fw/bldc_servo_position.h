@@ -264,6 +264,11 @@ class BldcServoPosition {
       BldcServoCommandData* data,
       float velocity) MOTEUS_CCM_ATTRIBUTE {
 
+
+    if (!std::isnan(data->ExtPosSensor1)) {
+      status->ext_pos_sensor_1 = data->ExtPosSensor1;
+    }
+
     // We go to some lengths in our conversions to and from
     // control_position so as to avoid converting a float directly to
     // an int64, which calls out to a system library that is pretty
@@ -277,7 +282,16 @@ class BldcServoPosition {
                !std::isnan(velocity)) {
       status->trajectory_done = false;
     }
-
+    
+    if (config->step_dir_interface.enabled){
+      status->trajectory_done = true;
+      status->control_velocity = velocity;
+      data->position = std::numeric_limits<float>::quiet_NaN();
+      status->control_position =
+          static_cast<int64_t>(65536ll * 65536ll) *
+          static_cast<int64_t>(
+              ( status->step_dir_indexer_raw * config->step_dir_interface.multiplier ));
+    }else
     if (!std::isnan(data->position) &&
         std::isnan(data->velocity_limit) &&
         std::isnan(data->accel_limit)) {

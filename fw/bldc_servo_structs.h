@@ -161,6 +161,8 @@ struct BldcServoStatus {
   // This is measured in the same units as unwrapped_position_raw.
   std::optional<int64_t> control_position;
   std::optional<float> control_velocity;
+  int64_t step_dir_indexer_raw;
+  std::optional<float> step_dir_indexer;
   float position_to_set = 0.0;
   float timeout_s = 0.0;
   bool rezeroed = false;
@@ -209,6 +211,14 @@ struct BldcServoStatus {
   Dwt dwt;
 #endif
 
+  float ext_pos_sensor_1;
+  float ext_pos_sensor_2;
+  float ext_pos_sensor_3;
+
+  float ext_pos_aux_1;
+  float ext_pos_aux_2;
+  float ext_pos_aux_3;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(MJ_NVP(mode));
@@ -256,6 +266,8 @@ struct BldcServoStatus {
 
     a->Visit(MJ_NVP(control_position));
     a->Visit(MJ_NVP(control_velocity));
+    a->Visit(MJ_NVP(step_dir_indexer_raw));
+    a->Visit(MJ_NVP(step_dir_indexer));    
     a->Visit(MJ_NVP(position_to_set));
     a->Visit(MJ_NVP(timeout_s));
     a->Visit(MJ_NVP(rezeroed));
@@ -274,6 +286,13 @@ struct BldcServoStatus {
 #ifdef MOTEUS_PERFORMANCE_MEASURE
     a->Visit(MJ_NVP(dwt));
 #endif
+    a->Visit(MJ_NVP(ext_pos_sensor_1));
+    a->Visit(MJ_NVP(ext_pos_sensor_2));
+    a->Visit(MJ_NVP(ext_pos_sensor_3));
+
+    a->Visit(MJ_NVP(ext_pos_aux_1));
+    a->Visit(MJ_NVP(ext_pos_aux_2));
+    a->Visit(MJ_NVP(ext_pos_aux_3));
   }
 };
 
@@ -328,6 +347,13 @@ struct BldcServoCommandData {
   // position closest to the given value.
   std::optional<float> rezero_position;
 
+  float ExtPosSensor1;
+  float ExtPosSensor2;
+  float ExtPosSensor3;
+  float ExtPosAux1;
+  float ExtPosAux2;
+  float ExtPosAux3;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(MJ_NVP(mode));
@@ -361,6 +387,15 @@ struct BldcServoCommandData {
 
     a->Visit(MJ_NVP(set_position));
     a->Visit(MJ_NVP(rezero_position));
+
+    a->Visit(MJ_NVP(ExtPosSensor1));
+    a->Visit(MJ_NVP(ExtPosSensor2));
+    a->Visit(MJ_NVP(ExtPosSensor3));
+
+    a->Visit(MJ_NVP(ExtPosAux1));
+    a->Visit(MJ_NVP(ExtPosAux2));
+    a->Visit(MJ_NVP(ExtPosAux3));
+
   }
 };
 
@@ -533,6 +568,27 @@ struct BldcServoConfig {
   };
   EncoderFilter encoder_filter;
 
+  struct ExtStepDirIf {
+      bool enabled = false;
+      float multiplier = 1.0f;
+      
+      bool startEnabled = false;
+      float max_t = 4;
+      float velocity = 4;
+     
+      template <typename Archive>
+      void Serialize(Archive* a) {
+        a->Visit(MJ_NVP(enabled));
+        a->Visit(MJ_NVP(multiplier));
+        a->Visit(MJ_NVP(startEnabled));
+        a->Visit(MJ_NVP(max_t));
+        a->Visit(MJ_NVP(velocity));
+
+      }
+    };
+    
+    ExtStepDirIf step_dir_interface;
+
   BldcServoConfig() {
     pid_dq.kp = 0.005f;
     pid_dq.ki = 30.0f;
@@ -583,6 +639,7 @@ struct BldcServoConfig {
     a->Visit(MJ_NVP(velocity_zero_capture_threshold));
     a->Visit(MJ_NVP(emit_debug));
     a->Visit(MJ_NVP(encoder_filter));
+    a->Visit(MJ_NVP(step_dir_interface));
   }
 };
 

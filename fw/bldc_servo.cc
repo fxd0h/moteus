@@ -979,7 +979,7 @@ class BldcServo::Impl {
         status_.step_dir_indexer_raw = 0;
         
         CommandData command;
-        command.mode = BldcServo::kPosition;
+        command.mode = BldcServo::Mode::kPosition;
 
         command.position = std::numeric_limits<double>::quiet_NaN();
         command.timeout_s = std::numeric_limits<double>::quiet_NaN();
@@ -1846,24 +1846,7 @@ class BldcServo::Impl {
             data,
             velocity);
 
-    if (!std::isnan(data->ExtPosSensor1)) {
-      status_.ext_pos_sensor_1 = data->ExtPosSensor1;
-    }
-    if (config_.step_dir_interface.enabled){
-      status_.control_position =
-          static_cast<int64_t>(65536ll * 65536ll) *
-          static_cast<int64_t>(
-              ( status_.step_dir_indexer_raw * config_.step_dir_interface.multiplier ));
-    }else
-    if (!std::isnan(data->position)) {
-      status_.control_position =
-          static_cast<int64_t>(65536ll * 65536ll) *
-          static_cast<int64_t>(
-              static_cast<int32_t>(motor_scale16_ * data->position));
-      data->position = std::numeric_limits<float>::quiet_NaN();
-    } else if (!status_.control_position) {
-      status_.control_position = status_.unwrapped_position_raw;
-    }
+    
     // At this point, our control position and velocity are known.
 
     if (config_.fixed_voltage_mode) {
