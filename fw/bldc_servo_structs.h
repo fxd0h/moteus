@@ -153,6 +153,8 @@ struct BldcServoStatus {
   // revolution.
   std::optional<int64_t> control_position;
   std::optional<float> control_velocity;
+  int64_t step_dir_indexer_raw = 0;
+  std::optional<float> step_dir_indexer;
   float position_to_set = std::numeric_limits<float>::quiet_NaN();
   float timeout_s = 0.0;
   bool trajectory_done = false;
@@ -254,6 +256,10 @@ struct BldcServoStatus {
     a->Visit(MJ_NVP(meas_ind_old_d_A));
     a->Visit(MJ_NVP(meas_ind_phase));
     a->Visit(MJ_NVP(meas_ind_integrator));
+
+    a->Visit(MJ_NVP(step_dir_indexer_raw));
+    a->Visit(MJ_NVP(step_dir_indexer));
+    
 
 #ifdef MOTEUS_PERFORMANCE_MEASURE
     a->Visit(MJ_NVP(dwt));
@@ -403,13 +409,14 @@ struct BldcServoMotor {
   }
 };
 
+
 struct BldcServoConfig {
   uint16_t pwm_rate_hz =
       (g_measured_hw_rev <= 2) ? 60000 :
       30000;
 
   float i_gain = 20.0f;  // should match csa_gain from drv8323
-  float current_sense_ohm = 0.0005f;
+  float current_sense_ohm = 0.005f;
 
   // PWM rise time compensation
   float pwm_comp_off =
@@ -509,6 +516,26 @@ struct BldcServoConfig {
   // debug UART at full control rate.
   uint32_t emit_debug = 0;
 
+struct ExtStepDirIf {
+  bool enabled = false;
+  float multiplier = 1.0f;
+
+  bool startEnabled = false;
+  float max_t = 4;
+  float velocity = 4;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(MJ_NVP(enabled));
+    a->Visit(MJ_NVP(multiplier));
+    a->Visit(MJ_NVP(startEnabled));
+    a->Visit(MJ_NVP(max_t));
+    a->Visit(MJ_NVP(velocity));
+
+  }
+};
+
+ExtStepDirIf step_dir_interface;
   BldcServoConfig() {
     pid_dq.kp = 0.005f;
     pid_dq.ki = 30.0f;
@@ -557,6 +584,7 @@ struct BldcServoConfig {
     a->Visit(MJ_NVP(cooldown_cycles));
     a->Visit(MJ_NVP(velocity_zero_capture_threshold));
     a->Visit(MJ_NVP(emit_debug));
+    a->Visit(MJ_NVP(step_dir_interface));
   }
 };
 

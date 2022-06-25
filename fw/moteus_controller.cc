@@ -396,6 +396,8 @@ class MoteusController::Impl : public multiplex::MicroServer::Server {
             options.debug_dac = MOTEUS_DEBUG_DAC;
             options.debug_out = MOTEUS_DEBUG1;
             options.debug_out2 = MOTEUS_DEBUG2;
+            options.step_in = MOTEUS_STEP_IN;
+            options.dir_in = MOTEUS_DIR_IN;
             options.debug_uart_out = MOTEUS_UART_TX;
 
             return options;

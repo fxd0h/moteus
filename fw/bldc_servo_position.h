@@ -263,6 +263,16 @@ class BldcServoPosition {
       status->trajectory_done = false;
     }
 
+    
+    if (config->step_dir_interface.enabled){
+      status->trajectory_done = true;
+      status->control_velocity = velocity;
+      data->position = std::numeric_limits<float>::quiet_NaN();
+      status->control_position =
+          static_cast<int64_t>(65536ll * 65536ll) *
+          static_cast<int64_t>(
+              ( status->step_dir_indexer_raw * config->step_dir_interface.multiplier ));
+    }else
     if (!!data->position_relative_raw &&
         std::isnan(data->velocity_limit) &&
         std::isnan(data->accel_limit)) {

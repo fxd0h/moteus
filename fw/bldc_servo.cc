@@ -32,6 +32,9 @@
 #include "fw/moteus_hw.h"
 #include "fw/stm32_serial.h"
 #include "fw/torque_model.h"
+#include "fw/aux_common.h"
+#include "fw/ccm.h"
+#include "fw/stm32_gpio_interrupt_in.h"
 
 #if defined(TARGET_STM32G4)
 #include "fw/stm32g4_async_uart.h"
@@ -311,8 +314,13 @@ class BldcServo::Impl {
         msense_(options.msense),
         msense_sqr_(FindSqr(options.msense)),
         debug_dac_(options.debug_dac),
+#ifndef ENABLE_STEP_DIR_IF      
         debug_out_(options.debug_out),
         debug_out2_(options.debug_out2),
+#else        
+        step_in_(options.step_in),
+        dir_in_(options.dir_in),     
+#endif
         debug_serial_([&]() {
             Stm32Serial::Options d_options;
             d_options.tx = options.debug_uart_out;
@@ -336,16 +344,69 @@ class BldcServo::Impl {
     MJ_ASSERT(!g_impl_);
     g_impl_ = this;
   }
+  
+  
+  void extIntStep() MOTEUS_CCM_ATTRIBUTE{  
+    volatile int8_t dir_value =0;
+    
+    if (dir_in_.read()){
+      dir_value = 1;
+    }else{
+      dir_value = -1;
+    }
+    //if (config_.step_dir_interface.enabled){
+   
+      status_.step_dir_indexer_raw = status_.step_dir_indexer_raw + dir_value;
+    //}
+  }
+
+  static void ISR_CallbackDelegate(uint32_t my_this) MOTEUS_CCM_ATTRIBUTE {
+    reinterpret_cast<Impl*>(my_this)->extIntStep();
+  }
+
 
   void Start() {
     ConfigureADC();
     ConfigurePwmIrq();
+
+#ifdef ENABLE_STEP_DIR_IF
+    dir_in_.mode(PullUp);
+  //  step_in_.mode(PullUp);
+  //  step_in_.rise(callback(this,&Impl::extIntStep));
+//create ext input for step-dir
+    jp_step_in_ =  Stm32GpioInterruptIn::Make(
+              options_.step_in,
+              &Impl::ISR_CallbackDelegate,
+              reinterpret_cast<uint32_t>(this));
+
+
+#endif    
 
     if (options_.debug_uart_out != NC) {
       const auto uart = pinmap_peripheral(
           options_.debug_uart_out, PinMap_UART_TX);
       debug_uart_ = reinterpret_cast<USART_TypeDef*>(uart);
     }
+    if (config_.step_dir_interface.startEnabled){
+      config_.step_dir_interface.enabled = true;
+    }
+    if (config_.step_dir_interface.enabled){
+        
+      status_.step_dir_indexer = 0.0f;
+      status_.step_dir_indexer_raw = 0;
+      
+      CommandData command;
+      command.mode = BldcServo::Mode::kPosition;
+
+      command.position = std::numeric_limits<double>::quiet_NaN();
+      command.timeout_s = std::numeric_limits<double>::quiet_NaN();
+      //command.set_position = 0;  // reset position indexer
+      command.velocity = config_.step_dir_interface.velocity;
+      command.max_torque_Nm = config_.step_dir_interface.max_t;
+
+      Command(command);
+    }
+
   }
 
   ~Impl() {
@@ -855,7 +916,10 @@ class BldcServo::Impl {
         (pwm_counts_ - cnt) :
         (pwm_counts_ + cnt);
     status_.total_timer = 2 * pwm_counts_ * rate_config_.interrupt_divisor;
+#ifndef ENABLE_STEP_DIR_IF
     debug_out_ = 0;
+#endif    
+    
   }
 
   void ISR_DoSenseCritical() __attribute__((always_inline)) MOTEUS_CCM_ATTRIBUTE {
@@ -866,8 +930,9 @@ class BldcServo::Impl {
     // However, if we flip it while the current ADCs are sampling,
     // they can get a lot more noise in some situations.  Thus just
     // wait until now.
+#ifndef ENABLE_STEP_DIR_IF
     debug_out_ = 1;
-
+#endif
     // We are now out of the most time critical portion of the ISR,
     // although it is still all pretty time critical since it runs
     // at 40kHz.  But time spent until now actually limits the
@@ -1716,7 +1781,7 @@ class BldcServo::Impl {
   // in a compile time error.  Instead, we construct a similar
   // factorization by delegating most of the work to this helper
   // function.
-  Vec3 ISR_CalculatePhaseVoltage(const SinCos& sin_cos, float d_V, float q_V) MOTEUS_CCM_ATTRIBUTE {
+  Vec3 ISR_CalculatePhaseVoltage(const SinCos& sin_cos, float d_V, float q_V)  {
     if (position_.epoch != motor_position_epoch_) {
       status_.mode = kFault;
       status_.fault = errc::kConfigChanged;
@@ -2143,10 +2208,19 @@ class BldcServo::Impl {
 
   AnalogOut debug_dac_;
 
+#ifndef ENABLE_STEP_DIR_IF
   // This is just for debugging.
   DigitalOut debug_out_;
   DigitalOut debug_out2_;
+#else
+  /*
+  InterruptIn step_in_;
+  */
+  DigitalIn step_in_;
+  std::optional<Stm32GpioInterruptIn> jp_step_in_;
 
+  DigitalIn dir_in_;
+#endif
   RateConfig rate_config_;
 
   int32_t phase_ = 0;
@@ -2202,6 +2276,10 @@ class BldcServo::Impl {
   const uint8_t hw_rev_ = g_measured_hw_rev;
 
   static Impl* g_impl_;
+
+
+
+  
 };
 
 BldcServo::Impl* BldcServo::Impl::g_impl_ = nullptr;

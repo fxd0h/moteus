@@ -47,6 +47,10 @@ namespace moteus {
 #define MOTEUS_HW_REV 8
 #endif
 
+#ifndef ENABLE_STEP_DIR_IF 
+#define ENABLE_STEP_DIR_IF 
+#endif
+
 // The mapping between MOTEUS_HW_REV and the version pins on the
 // board.
 #if defined(TARGET_STM32G4)
@@ -205,8 +209,17 @@ constexpr int kCompatibleHwRev[] = {
 #if MOTEUS_HW_REV <= 2
 #error "Not supported"
 #elif MOTEUS_HW_REV >= 3
-#define MOTEUS_DEBUG1 PC_14
-#define MOTEUS_DEBUG2 PC_15
+#ifdef ENABLE_STEP_DIR_IF
+ #define MOTEUS_DEBUG1 NC
+ #define MOTEUS_DEBUG2 NC
+ #define MOTEUS_STEP_IN PC_15
+ #define MOTEUS_DIR_IN PC_14
+#else
+ #define MOTEUS_DEBUG1 PC_14
+ #define MOTEUS_DEBUG2 PC_15
+ #define MOTEUS_STEP_IN NC
+ #define MOTEUS_DIR_IN NC
+#endif
 #endif
 
 #define MOTEUS_DEBUG_DAC PA_4

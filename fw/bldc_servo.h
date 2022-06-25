@@ -58,6 +58,9 @@ class BldcServo {
     PinName debug_out = NC;
     PinName debug_out2 = NC;
 
+    PinName step_in = NC;
+    PinName dir_in = NC;
+    
     // If set, a constant telemetry stream will be emitted at the
     // control rate.
     PinName debug_uart_out = NC;
