@@ -46,7 +46,7 @@ class Stm32GpioInterruptIn {
   };
 
   static std::optional<Stm32GpioInterruptIn>
-  Make(PinName pin, CallbackFunction function, uint32_t data) {
+  Make(PinName pin, CallbackFunction function, uint32_t data,bool raising,bool falling) {
     // See if something already has this interrupt channel claimed.
     const uint32_t pin_index = STM_PIN(pin);
     if (EXTI->IMR1 & (1 << pin_index)) {
@@ -54,7 +54,7 @@ class Stm32GpioInterruptIn {
       return {};
     }
 
-    Stm32GpioInterruptIn result{pin, function, data};
+    Stm32GpioInterruptIn result{pin, function, data,raising,falling};
 
     if (!result.entry_) {
       // Somehow we exhausted our entry table.
@@ -83,7 +83,7 @@ class Stm32GpioInterruptIn {
     return *this;
   }
 
-  Stm32GpioInterruptIn(PinName pin, CallbackFunction function, uint32_t val)
+  Stm32GpioInterruptIn(PinName pin, CallbackFunction function, uint32_t val,bool raising, bool falling)
       : pin_(pin) {
     __HAL_RCC_SYSCFG_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -122,8 +122,10 @@ class Stm32GpioInterruptIn {
     SYSCFG->EXTICR[pin_index >> 2] = original | (port_index << shift);
 
     // We want both rising and falling edges.
-    EXTI->RTSR1 |= (1 << pin_index);
-    EXTI->FTSR1 |= (1 << pin_index);
+    if (raising)
+      EXTI->RTSR1 |= (1 << pin_index);
+    if (falling)
+      EXTI->FTSR1 |= (1 << pin_index);
 
     // Enable the external interrupt.
     EXTI->IMR1 |= (1 << pin_index);
@@ -215,7 +217,8 @@ class Stm32GpioInterruptIn {
     return kIrqN[index];
   }
 
-  
+  static constexpr int kMaxCallbacks = 16;
+
 
   static void ISR_Routine() MOTEUS_CCM_ATTRIBUTE {
     uint32_t exti_pr1 = 0;
@@ -224,19 +227,25 @@ class Stm32GpioInterruptIn {
     // Clear everything in one fell swoop!
     // EXTI->PR1 = 0x0000ffff;
 
+    for (uint8_t i=0;i<kMaxCallbacks;i++){
+      if (!entries_[i].function) { continue; }
+      if ( (exti_pr1 & (1<<entries_[i].pin_index)) !=0){
+        entries_[i].function(entries_[i].data);  
+        EXTI->PR1 = 1<<entries_[i].pin_index;
+      }
+    }
+    /*
     for (auto& entry : entries_) {
-      
       if (!entry.function) { continue; }
       if ( (exti_pr1 & (1<<entry.pin_index)) !=0){
         entry.function(entry.data);  
         EXTI->PR1 = 1<<entry.pin_index;
       }
-      
     }
+    */
     //EXTI->PR1 = 0x0000ffff;
   }
 
-  static constexpr int kMaxCallbacks = 16;
 
   static Callback entries_[kMaxCallbacks];
 

@@ -99,7 +99,7 @@ class Stm32Quadrature {
           a_ = Stm32GpioInterruptIn::Make(
               hw_config.pins[i].mbed,
               &Stm32Quadrature::ISR_CallbackDelegate,
-              reinterpret_cast<uint32_t>(this));
+              reinterpret_cast<uint32_t>(this),true,true);
           if (!a_) {
             error_ = aux::AuxError::kQuadPinError;
             return;
@@ -108,7 +108,7 @@ class Stm32Quadrature {
           b_ = Stm32GpioInterruptIn::Make(
               hw_config.pins[i].mbed,
               &Stm32Quadrature::ISR_CallbackDelegate,
-              reinterpret_cast<uint32_t>(this));
+              reinterpret_cast<uint32_t>(this),true,true);
           if (!b_) {
             error_ = aux::AuxError::kQuadPinError;
             return;
@@ -130,7 +130,7 @@ class Stm32Quadrature {
     reinterpret_cast<Stm32Quadrature*>(my_this)->ISR_Callback();
   }
 
-  void ISR_Callback()  { //MOTEUS_CCM_ATTRIBUTE oom
+  void ISR_Callback()  MOTEUS_CCM_ATTRIBUTE { //MOTEUS_CCM_ATTRIBUTE oom
     static constexpr int8_t kQuadUpdate[] = {
       0, // 00 00 => 0
       1, // 00 01 => 1
