@@ -126,11 +126,11 @@ class Stm32Quadrature {
     return;
   }
 
-  static void ISR_CallbackDelegate(uint32_t my_this) MOTEUS_CCM_ATTRIBUTE {
+  static void ISR_CallbackDelegate(uint32_t my_this)  { //MOTEUS_CCM_ATTRIBUTE oom
     reinterpret_cast<Stm32Quadrature*>(my_this)->ISR_Callback();
   }
 
-  void ISR_Callback() MOTEUS_CCM_ATTRIBUTE {
+  void ISR_Callback()  { //MOTEUS_CCM_ATTRIBUTE oom
     static constexpr int8_t kQuadUpdate[] = {
       0, // 00 00 => 0
       1, // 00 01 => 1

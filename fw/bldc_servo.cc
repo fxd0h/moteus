@@ -348,12 +348,15 @@ class BldcServo::Impl {
   
   void extIntStep() MOTEUS_CCM_ATTRIBUTE{  
     volatile int8_t dir_value =0;
-    
-    if (dir_in_.read()){
-      dir_value = 1;
-    }else{
-      dir_value = -1;
+    if (jp_step_in_->read()){
+      if (dir_in_.read()){
+        dir_value = 1;
+      }else {
+        dir_value = -1;
+      }
     }
+
+
     //if (config_.step_dir_interface.enabled){
    
       status_.step_dir_indexer_raw = status_.step_dir_indexer_raw + dir_value;
@@ -374,6 +377,7 @@ class BldcServo::Impl {
   //  step_in_.mode(PullUp);
   //  step_in_.rise(callback(this,&Impl::extIntStep));
 //create ext input for step-dir
+ 
     jp_step_in_ =  Stm32GpioInterruptIn::Make(
               options_.step_in,
               &Impl::ISR_CallbackDelegate,

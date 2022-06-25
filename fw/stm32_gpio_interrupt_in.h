@@ -36,11 +36,13 @@ class Stm32GpioInterruptIn {
     CallbackFunction function = {};
     uint32_t data = 0;
     int ref_count = 0;
-
+    uint8_t pin_index = 0;
     Callback() {}
-    Callback(CallbackFunction function_in, uint32_t data_in)
+    Callback(CallbackFunction function_in, uint32_t data_in , uint8_t pin)
         : function(function_in),
-          data(data_in) {}
+          data(data_in),
+          pin_index(pin)
+          {}
   };
 
   static std::optional<Stm32GpioInterruptIn>
@@ -107,7 +109,7 @@ class Stm32GpioInterruptIn {
     mask_ = static_cast<uint32_t>(1 << (static_cast<uint32_t>(pin) & 0xf));
 
 
-    Callback cbk(function, val);
+    Callback cbk(function, val,pin_index);
     entry_ = FindCallback(cbk);
     entry_->ref_count++;
 
@@ -177,13 +179,14 @@ class Stm32GpioInterruptIn {
     // First look for matches.
     for (auto& entry : entries_) {
       if (entry.function == cbk.function &&
-          entry.data == cbk.data) {
+          entry.data == cbk.data && 
+          entry.pin_index == cbk.pin_index) {
         return &entry;
       }
     }
     // Then look for empties.
     for (auto& entry : entries_) {
-      if (entry.function == nullptr) {
+      if (entry.function == nullptr && entry.data == 0) {
         entry = cbk;
         return &entry;
       }
@@ -212,17 +215,28 @@ class Stm32GpioInterruptIn {
     return kIrqN[index];
   }
 
+  
+
   static void ISR_Routine() MOTEUS_CCM_ATTRIBUTE {
+    uint32_t exti_pr1 = 0;
+    
+    exti_pr1 = EXTI->PR1;
     // Clear everything in one fell swoop!
-    EXTI->PR1 = 0x0000ffff;
+    // EXTI->PR1 = 0x0000ffff;
 
     for (auto& entry : entries_) {
+      
       if (!entry.function) { continue; }
-      entry.function(entry.data);
+      if ( (exti_pr1 & (1<<entry.pin_index)) !=0){
+        entry.function(entry.data);  
+        EXTI->PR1 = 1<<entry.pin_index;
+      }
+      
     }
+    //EXTI->PR1 = 0x0000ffff;
   }
 
-  static constexpr int kMaxCallbacks = 2;
+  static constexpr int kMaxCallbacks = 16;
 
   static Callback entries_[kMaxCallbacks];
 
