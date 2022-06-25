@@ -217,7 +217,7 @@ class Stm32GpioInterruptIn {
     return kIrqN[index];
   }
 
-  static constexpr int kMaxCallbacks = 16;
+  static constexpr int kMaxCallbacks = 3;
 
 
   static void ISR_Routine() MOTEUS_CCM_ATTRIBUTE {
