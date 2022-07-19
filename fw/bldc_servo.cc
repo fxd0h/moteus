@@ -398,6 +398,7 @@ class BldcServo::Impl {
         
       status_.step_dir_indexer = 0.0f;
       status_.step_dir_indexer_raw = 0;
+      status_.position_to_set = 0.0f;
       
       CommandData command;
       command.mode = BldcServo::Mode::kPosition;
@@ -407,7 +408,7 @@ class BldcServo::Impl {
       //command.set_position = 0;  // reset position indexer
       command.velocity = config_.step_dir_interface.velocity;
       command.max_torque_Nm = config_.step_dir_interface.max_t;
-
+      
       Command(command);
     }
 
