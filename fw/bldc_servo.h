@@ -136,6 +136,7 @@ class BldcServo {
   void Start();
   void Command(const CommandData&);
 
+
   const Status& status() const;
   const Config& config() const;
   const Control& control() const;
@@ -147,6 +148,9 @@ class BldcServo {
   void SetOutputPositionNearest(float position);
   void SetOutputPosition(float position);
   void RequireReindex();
+  void CheckAndInitStepDir();
+  
+
 
  private:
   class Impl;

@@ -394,26 +394,10 @@ class BldcServo::Impl {
     if (config_.step_dir_interface.startEnabled){
       config_.step_dir_interface.enabled = true;
     }
-    if (config_.step_dir_interface.enabled){
-        
-      status_.step_dir_indexer = 0.0f;
-      status_.step_dir_indexer_raw = 0;
-      status_.position_to_set = 0.0f;
-      
-      CommandData command;
-      command.mode = BldcServo::Mode::kPosition;
-
-      command.position = std::numeric_limits<double>::quiet_NaN();
-      command.timeout_s = std::numeric_limits<double>::quiet_NaN();
-      //command.set_position = 0;  // reset position indexer
-      command.velocity = config_.step_dir_interface.velocity;
-      command.max_torque_Nm = config_.step_dir_interface.max_t;
-      
-      Command(command);
-    }
 
   }
 
+  
   ~Impl() {
     g_impl_ = nullptr;
   }
@@ -555,6 +539,30 @@ class BldcServo::Impl {
       *mode_volatile = kCalibrating;
     }
   }
+
+  void CheckAndInitStepDir(void){
+    if (config_.step_dir_interface.enabled){
+        
+      //status_.step_dir_indexer = 0.0f;
+      //status_.step_dir_indexer_raw = 0;
+      //status_.position_to_set = 0.0f;
+      //motor_position_->ISR_SetOutputPositionNearest(0.0f);
+      //motor_position_->ISR_SetOutputPosition(0.0f);
+      CommandData command;
+      command.mode = BldcServo::Mode::kPosition;
+      //command.position = 0.0f;
+      command.position = std::numeric_limits<double>::quiet_NaN();
+      command.timeout_s = std::numeric_limits<double>::quiet_NaN();
+      //command.set_position = 0;  // reset position indexer
+      command.velocity = config_.step_dir_interface.velocity;
+      command.max_torque_Nm = config_.step_dir_interface.max_t;
+      //wait_ms(2000);
+      
+      Command(command);
+    }
+  }
+
+ 
 
   void SetOutputPositionNearest(float position) {
     // The required function can only officially be called in an ISR
@@ -2355,6 +2363,10 @@ void BldcServo::SetOutputPosition(float position) {
 
 void BldcServo::RequireReindex() {
   impl_->RequireReindex();
+}
+
+void BldcServo::CheckAndInitStepDir(){
+  impl_->CheckAndInitStepDir();
 }
 
 }

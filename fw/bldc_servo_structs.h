@@ -518,19 +518,20 @@ struct BldcServoConfig {
 
 struct ExtStepDirIf {
   bool enabled = false;
-  float multiplier = 1.0f;
+  uint64_t ppr = 65535;
 
   bool startEnabled = false;
-  float max_t = 4;
-  float velocity = 4;
+  float max_t = 2;
+  float velocity = 1;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(MJ_NVP(enabled));
-    a->Visit(MJ_NVP(multiplier));
+    a->Visit(MJ_NVP(ppr));
     a->Visit(MJ_NVP(startEnabled));
     a->Visit(MJ_NVP(max_t));
     a->Visit(MJ_NVP(velocity));
+
 
   }
 };

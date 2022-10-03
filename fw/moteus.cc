@@ -347,6 +347,8 @@ int main(void) {
   multiplex_protocol.Start(moteus_controller.multiplex_server());
 
   auto old_time = timer.read_ms();
+  bool wasInit=false;
+  bool wasInit2=false;
 
   for (;;) {
     rs485.Poll();
@@ -368,6 +370,27 @@ int main(void) {
     }
 
     SystemInfo::idle_count++;
+
+    if (( new_time >200)&&(wasInit==false)){
+      wasInit = true;
+      //moteus_controller.bldc_servo()->SetOutputPosition(0.0f);
+      //moteus_controller.bldc_servo()->CheckAndInitStepDir();
+
+      // Get us within 1 revolution.
+      moteus_controller.bldc_servo()->SetOutputPositionNearest(0.0f);
+      const float cur_output = moteus_controller.bldc_servo()->motor_position().position;
+      const float error = 0.0f - cur_output;
+
+      auto* const config = moteus_controller.bldc_servo()->motor_position_config();
+      config->output.offset += error * config->output.sign;
+
+      moteus_controller.bldc_servo()->SetOutputPositionNearest(0.0f);
+    }
+    
+    if (( new_time >500)&&(wasInit2==false)){
+      wasInit2 = true;
+      moteus_controller.bldc_servo()->CheckAndInitStepDir();
+    }
   }
 
   return 0;

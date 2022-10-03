@@ -268,10 +268,19 @@ class BldcServoPosition {
       status->trajectory_done = true;
       status->control_velocity = velocity;
       data->position = std::numeric_limits<float>::quiet_NaN();
-      status->control_position =
-          static_cast<int64_t>(65536ll * 65536ll) *
-          static_cast<int64_t>(
-              ( status->step_dir_indexer_raw * config->step_dir_interface.multiplier ));
+      /*if (!status->control_position) {
+        status->control_position = position->position_relative_raw;
+        data->position_relative_raw.reset();
+      }else{*/
+        float my_offset_f = position->position - position->position_relative;
+        float my_desired_position_f = static_cast< float >(status->step_dir_indexer_raw) / static_cast< float >(config->step_dir_interface.ppr);
+        /*MotorPosition::IntToFloat(static_cast<int64_t>(65536ll * 65536ll) *
+                                                                //static_cast<int64_t>(status->step_dir_indexer_raw * config->step_dir_interface.multiplier));
+                                                                static_cast<int64_t>(status->step_dir_indexer_raw * config->step_dir_interface.multiplier));
+                                                                */
+        status->control_position = MotorPosition::FloatToInt(my_desired_position_f - my_offset_f);
+      //}  
+      
     }else
     if (!!data->position_relative_raw &&
         std::isnan(data->velocity_limit) &&
